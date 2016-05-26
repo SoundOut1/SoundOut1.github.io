@@ -45,7 +45,45 @@
             
         <div class="modal-content">
              <div class="container">
-                one whole heap of words here. documentation nd shitttt
+                In order to remove unwanted environmental noise an Active Noise Cancellation (ANC) Software will be created as aforementioned. This software will reduce unwanted noise by producing a waveform which is in antiphase with the original noise, or an anti-noise, and playing it to the user. While the software is running on the computer system it will capture the unwanted noise from the environment through the microphone on the computer. The frequency and amplitude of the captured noise will be determined by the ANC software and an anti-noise will be formulated. That anti-noise and the environmental noise will then be simultaneously heard by the user which will therefore result in the user hearing only the desired input, and if there is none, the user would instead “hear silence”. 
+
+System Structure
+
+The system architecture used is a Pipe and Filter(hereafter referred to as P&F) or Pipeline architecture. In the P&F architecture, there are two types of components, the pipe and the filter. The pipe serves as the messaging system or communication channel, while the filter performs one or more transformations on the data being passed by the previously connected pipe. The key to P&F is that each operation occurs concurrently, allowing data to be output at a continuous rate. A simple pictorial description of a regular system is seen in the picture below.
+
+
+Taken from http://www.cs.sjsu.edu/~pearce/modules/patterns/distArch/pipeline.htm
+
+
+Pipe and Filter is ideal for situations where there are many transforms to be executed concurrently, and was thought to be inspired for use in signal processing systems. In our system, the P&F allows the output of SoundOut to constantly be played back to the user, without blocking and waiting for the sound to be calculated. This is achieved through the use of threading during the calculations. Our pipes represent data transfer between methods, and our filters are the multiple transforms executed on the data. In the figure below we show a depiction of our system in P&F.
+
+
+The transforms above are coroutines, meaning they operate at the same time. The data travels through the system from the moment noise is captured through to the playback of the anti-noise, with each step occurring concurrently.
+
+Approaches
+To solve the problem of creating the anti-noise to be played, we devised two key strategies.
+
+Approaches to Creating the Anti-Noise
+
+1st Approach to creating anti-noise - We analyze the shapes of the ambient noise.
+
+Within the first phase of this approach, the system accepts a continuous stream of samples of the noise surrounding the microphone. For this approach, the software needs to know what it’s looking for. It specifies noise therefore as the loudest frequencies within a sampled sound, or specifically, those with the highest amplitudes.
+
+After the program has begun running, the system uses a grouping of frequency ranges called the Bark Scale to identify and focus on specific frequency bands. The bark scale is a non-linear frequency scale modeling the resolution of the human hearing system. A depiction of Barks vs. Frequencies is seen below.
+
+Bark Scale as a mapping of Bark vs. Frequency.
+ 
+
+The system groups these samples by their barks, and looks for the bark which holds the frequency with the highest amplitude, in order to narrow down how many values the system has to monitor.
+
+Because the system is an adaptive one, it constantly has to check for any new sources of noise, which it recognizes by frequency changes that carry it outside of the current bark. The system must therefore run in an infinite loop, which allows for adjustments to be made further down the pipeline. These operations must be carried out within a matter of milliseconds, to which this approach accomplishes within 150-200 ms per calculation.
+
+In order to build a suitable impulse response function, we have to find not only the most prevalent frequency within the sound, but also those within a relatively close level of loudness. We defined this relative closeness as any of the top six frequencies with a relative loudness of 20% of the loudest frequency. These frequencies allow us to better calculate our impulse response function, and get a “picture” of the noise.	
+
+The second phase involves using the method of recording these top frequency values to create our impulse response function. To do this, we record multiple samples of that subrange (as specified by the bark scale), looking for the prevalent frequencies within them.
+
+We subsequently take the average of these most prevalent frequencies over 3-4 samples, and use these averaged results as an expected (safe) range of values within this subrange. Using data aggregation, we calculate average expected frequencies based on these values to get closer to the true frequencies contained within the noise. Subsequently, in an effort  to implement prediction and correction, we compare the expected value which were calculated to the actual value at the time when the inverted noise is applied. This value can be used to give us a better average for the next calculation.
+
             </div>
                 
         </div>
